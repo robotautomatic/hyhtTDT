@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp"
+            android:orientation="vertical">
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="名称：" />
+        <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                android:id="@+id/ent_name"
+                android:layout_width="160dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:hint="请输入点的名称"
+                app:met_clearButton="true"
+                app:met_maxCharacters="10"/>
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="编码：" />
+        <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                android:id="@+id/ent_code"
+                android:layout_width="160dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:hint="请输入点的编码"
+                app:met_clearButton="true"
+                app:met_maxCharacters="5"/>
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="属性：" />
+        <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                android:id="@+id/ent_attribute"
+                android:layout_width="160dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:hint="请输入点的属性"
+                app:met_clearButton="true"
+                app:met_maxCharacters="12"/>
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="地址：" />
+        <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                android:id="@+id/ent_address"
+                android:layout_width="160dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:hint="请输入点的地址"
+                app:met_clearButton="true"
+                app:met_maxCharacters="12"/>
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="所有者：" />
+        <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                android:id="@+id/ent_owner"
+                android:layout_width="160dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:hint="请输入点的所有者"
+                app:met_clearButton="true"
+                app:met_maxCharacters="12"/>
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="类型：" />
+        <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                android:id="@+id/ent_property"
+                android:layout_width="160dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:hint="请输入点的类型"
+                app:met_clearButton="true"
+                app:met_maxCharacters="12"/>
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="图片：" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:orientation="horizontal">
+            <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                    android:id="@+id/ent_image"
+                    android:layout_width="160dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0"
+                    android:hint="请输入绘制图形的所有者"
+                    app:met_clearButton="true"
+                    app:met_maxCharacters="12"/>
+
+            <com.xuexiang.xui.widget.alpha.XUIAlphaButton
+                    android:id="@+id/btn_getImage"
+                    style="@style/Button.Radius"
+                    android:layout_width="wrap_content"
+                    android:text="选择图片" />
+        </LinearLayout>
+
+        <ImageView
+                android:id="@+id/image_choose"
+                android:layout_width="128dp"
+                android:layout_height="128dp"
+                android:visibility="gone"/>
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="附加信息：" />
+        <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                android:id="@+id/ent_list"
+                android:layout_width="160dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:hint="请输入附加的说明信息"
+                app:met_clearButton="true"
+                app:met_maxCharacters="12"/>
+
+    </LinearLayout>
+</LinearLayout>
