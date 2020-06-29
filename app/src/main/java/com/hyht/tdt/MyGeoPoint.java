@@ -19,13 +19,7 @@ public class MyGeoPoint extends ItemizedOverlay {
     private Context mContext;
     private List<OverlayItem> geoList = new
             ArrayList<OverlayItem>();
-
-
-    private ItemsOverlayList mList = null;
-
-    public MyGeoPoint(Drawable defaultMarker) {
-        super(defaultMarker);
-    }
+    private boolean on;
 
     public MyGeoPoint(Drawable marker, Context context, List<GeoPoint> points) {
         super(boundCenterBottom(marker));
@@ -48,36 +42,78 @@ public class MyGeoPoint extends ItemizedOverlay {
         return geoList.size();
     }
 
+
     /*
      * 在某个条目被点击时调用
      */
-    @Override
+   /* @Override
     public boolean onTap(GeoPoint geoPoint, MapView mapView) {
-        System.out.println("geoPoint = "+ geoPoint);
+        System.out.println("geoPoint111 = "+ geoPoint);
         Projection pro = mapView.getProjection();
         Point point = pro.toPixels(geoPoint, (Point)null);
-        System.out.println("geoPoint = "+ point);
+        System.out.println("Point222 = "+ point);
+        int oldID = super.getFocusID();
         getFocusID();
-        System.out.println("Id = "+ getFocusID());
+        int focusID = super.getFocusID();
+        System.out.println("Id = "+ super.getFocusID());
         getLastFocusedIndex();
-        System.out.println("getLastFocusedIndex = "+ getLastFocusedIndex());
+        System.out.println("getLastFocusedIndex = "+ super.getLastFocusedIndex());
         getFocus();
-        System.out.println("getFocus = "+ getFocus());/*
+        System.out.println("getFocus = "+ super.getFocus());*//*
         getCenter();
-        System.out.println("getCenter = "+ getCenter());*/
+        System.out.println("getCenter = "+ getCenter());*//*
 
+        this.onTap(focusID);
 
-/*        int oldID = this.mList.getFocusID();
+        if (oldID != focusID) {
+            mapView.invalidate();
+        }
+*//*        int oldID = this.mList.getFocusID();
         boolean b = this.mList.onTap(point, mapView);
         int focusID = this.mList.getFocusID();
         this.onTap(focusID);
         if (oldID != focusID) {
             mapView.invalidate();
-        }*/
+        }*//*
+
+        return false;
+    }*/
+    @Override
+    protected boolean onTap(int i) {
+        System.out.println("on = " + on);
+        System.out.println("i = " + i);
+        if (i != -1) {
+            Toast.makeText(mContext,
+                    geoList.get(i).getSnippet(), Toast.LENGTH_SHORT).show();
+
+            System.out.println(" /   getFocusID = " + super.getFocusID());
+            System.out.println(" //   getLastFocusedIndex = " + super.getLastFocusedIndex());
+            System.out.println(" ///   getFocus = " + super.getFocus());
+            System.out.println(" ////   getCenter = " + super.getCenter());
+        }
 
         return true;
     }
 
+    @Override
+    public boolean onTap(GeoPoint geoPoint, MapView mapView) {
+        on = super.onTap(geoPoint, mapView);
+
+        if(on == true){
+            MaterialDialog materialDialog = new MaterialDialog.Builder(mContext)
+                    .customView(R.layout.dialog_custom_point, true)
+                    .iconRes(R.drawable.ic_save)
+                    .title("保存单个点信息")
+                    .positiveText("确认")
+                    .negativeText("取消").onPositive(new MaterialDialog.SingleButtonCallback() {
+                        @Override
+                        public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+
+                        }
+                    }).show();
+        }
+        return on;
+    }
 }
 /*
     MaterialDialog materialDialog = new MaterialDialog.Builder(mContext)
