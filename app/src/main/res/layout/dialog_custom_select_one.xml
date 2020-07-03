@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp"
+            android:orientation="vertical">
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="名称：" />
+        <TextView
+                android:id="@+id/ent_name"
+                style="@style/TextStyle.Content" />
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="编码：" />
+        <TextView
+                android:id="@+id/ent_code"
+                style="@style/TextStyle.Content" />
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="属性：" />
+        <TextView
+                android:id="@+id/ent_attribute"
+                style="@style/TextStyle.Content" />
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="地址：" />
+        <TextView
+                android:id="@+id/ent_address"
+                style="@style/TextStyle.Content" />
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="所有者：" />
+        <TextView
+                android:id="@+id/ent_owner"
+                style="@style/TextStyle.Content" />
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="类型：" />
+        <TextView
+                android:id="@+id/ent_property"
+                style="@style/TextStyle.Content" />
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="图片：" />
+        <ImageView
+                android:id="@+id/image_choose"
+                android:layout_width="128dp"
+                android:layout_height="128dp"
+                android:visibility="gone"/>
+        <TextView
+                style="@style/TextStyle.Content"
+                android:text="附加信息：" />
+        <TextView
+                android:id="@+id/ent_list"
+                style="@style/TextStyle.Content" />
+
+    </LinearLayout>
+</LinearLayout>

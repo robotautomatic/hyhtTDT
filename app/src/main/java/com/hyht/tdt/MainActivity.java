@@ -9,57 +9,40 @@ import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.provider.MediaStore;
-import android.text.InputType;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.*;
-import androidx.annotation.ContentView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import com.android.volley.NetworkResponse;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.request.RequestOptions;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.tianditu.android.maps.*;
-import com.tianditu.android.maps.overlay.*;
 import com.tianditu.android.maps.renderoption.*;
-import com.xuexiang.xui.XUI;
 import com.xuexiang.xui.adapter.simple.AdapterItem;
 import com.xuexiang.xui.adapter.simple.XUISimpleAdapter;
 import com.xuexiang.xui.utils.DensityUtils;
-import com.xuexiang.xui.utils.SnackbarUtils;
 import com.xuexiang.xui.widget.dialog.bottomsheet.BottomSheet;
 import com.xuexiang.xui.widget.dialog.bottomsheet.BottomSheetItemView;
 import com.xuexiang.xui.widget.dialog.materialdialog.DialogAction;
 import com.xuexiang.xui.widget.dialog.materialdialog.MaterialDialog;
 import com.xuexiang.xui.widget.popupwindow.popup.XUISimplePopup;
 import com.xuexiang.xui.widget.toast.XToast;
-import org.apache.commons.io.IOUtils;
-import org.json.JSONObject;
 
 import javax.microedition.khronos.opengles.GL10;
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.lang.reflect.Type;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.sql.SQLOutput;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -74,10 +57,18 @@ public class MainActivity extends Activity implements View.OnClickListener {
             "地形地图",
             "普通地图",
     };
+    public static AdapterItem[] menuItems = new AdapterItem[]{
+            new AdapterItem("取消显示", R.drawable.ic_all_overlay),
+            new AdapterItem("全部显示", R.drawable.tuceng),
+            new AdapterItem("点覆盖物", R.drawable.ic_point_overlay),
+            new AdapterItem("线覆盖物", R.drawable.ic_line_overlay),
+            new AdapterItem("面覆盖物", R.drawable.ic_plane_overlay),
+    };
 
     private MapView mapView;
     private XUISimplePopup mListPopup;
     private MyOverlay mOverlay;
+    private MyGeoPoint myGeoPoint;
 
     //在API23+以上，不仅要在AndroidManifest.xml里面添加权限 还要在JAVA代码中请求权限：
     // Storage Permissions
@@ -128,6 +119,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         findViewById(R.id.btn_select).setOnClickListener(this);
 
+        findViewById(R.id.btn_overlay).setOnClickListener(this);
+
+        findViewById(R.id.btn_location).setOnClickListener(this);
+
 
     }
 
@@ -145,9 +140,12 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 XToast.normal(this, "绘画完成！").show();
 
                 Drawable marker =
-                        getResources().getDrawable(R.drawable.tuding);
-                MyGeoPoint myGeoPoint = new MyGeoPoint(marker,MainActivity.this,points);
+                        getResources().getDrawable(R.mipmap.tuding);
+                myGeoPoint = new MyGeoPoint(marker,MainActivity.this,points);
+                System.out.println("pppoints = " + points);
                 mapView.addOverlay(myGeoPoint);
+                findViewById(R.id.btn_draw_rollback).setVisibility(View.GONE);
+
                 break;
             case R.id.btn_draw_rollback:
                 if (points.size() != 0) {
@@ -160,6 +158,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 points.clear();
                 mapView.invalidate();
                 XToast.normal(this, "清除图像！").show();
+                mapView.removeOverlay(myGeoPoint);
                 break;
             case R.id.btn_draw_save:
                 XToast.normal(this, "保存至数据库！").show();
@@ -168,6 +167,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 break;
             case R.id.btn_draw_exit:
                 mapView.removeOverlay(mOverlay);
+                mapView.removeAllOverlay();
                 mapView.invalidate();
                 drawBottonVisual(false);
                 XToast.normal(this, "退出绘制").show();
@@ -175,6 +175,18 @@ public class MainActivity extends Activity implements View.OnClickListener {
             case R.id.btn_select:
                 showCustomDialog = new ShowCustomDialog();
                 showCustomDialog.buildSelect();
+                break;
+            case R.id.btn_overlay:
+                showSaveOverlay(v);
+                break;
+            case R.id.btn_location:
+                MyLocationOverlay myLocation = new MyLocationOverlay(this, mapView);
+                myLocation.enableCompass(); //显示指南针
+                myLocation.enableMyLocation(); //显示我的位置
+                GeoPoint myLocationPoint = myLocation.getMyLocation();
+                mapView.addOverlay(myLocation);
+                MapController mapController= new MapController(mapView);
+                mapController.animateTo(myLocationPoint);
                 break;
         }
     }
@@ -278,16 +290,74 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 //正确接受数据之后的回调
                 @Override
                 public void onResponse(String response) {
-
+                    System.out.println("responsesssssssssssss = "+response);
                     Type type = new TypeToken<List<EntEntity>>() {
                     }.getType();
                     Gson gson = new Gson();
-                    List<EntEntity> userList = gson.fromJson(response, type);
+                    final List<EntEntity> userList = gson.fromJson(response, type);
+                    userList.get(0).getEntName();
+                    final List<String> list = new ArrayList<>();
+                    for (EntEntity user : userList
+                         ) {
+                        list.add("名称：" + user.getEntName() + "  编码：" + user.getEntCode());
+                    }
 
                     System.out.println("ppppppppprint = " + userList);
+                    System.out.println("ppppppppprint list = " + list);
 
                     materialDialog = new MaterialDialog.Builder(MainActivity.this)
-                            .items(userList)
+                            .items(list).itemsCallback(new MaterialDialog.ListCallback() {
+                                @Override
+                                public void onSelection(MaterialDialog dialog, View itemView, final int position, CharSequence text) {
+                                    materialDialog = new MaterialDialog.Builder(MainActivity.this)
+                                            .customView(R.layout.dialog_custom_select_one, true)
+                                            .iconRes(R.drawable.ic_save)
+                                            .title("详细信息")
+                                            .positiveText("显示在地图上")
+                                            .negativeText("取消").onPositive(new MaterialDialog.SingleButtonCallback() {
+                                                @Override
+                                                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                                                    String addition = userList.get(position).getEntAddition();
+                                                    System.out.println(addition);
+                                                    List<String> additionList = new ArrayList<>();
+                                                    String[] strArr = addition.split("/");
+                                                    for (String s : strArr
+                                                         ) {
+                                                        additionList.add(s);
+                                                    }
+                                                    List<GeoPoint> pointsSelect= new ArrayList<>();
+                                                    for (String s : additionList
+                                                         ) {
+                                                        String[] pointAddition = s.split(",");
+                                                        GeoPoint pointSelect = new GeoPoint(Integer.valueOf(pointAddition[1]).intValue(),Integer.valueOf(pointAddition[0]).intValue());
+                                                        pointsSelect.add(pointSelect);
+                                                    }
+                                                    System.out.println("ppp            = "+ pointsSelect);
+                                                    MyGeoPoint myGeoPoint1 = new MyGeoPoint(getResources().getDrawable(R.mipmap.tuding),MainActivity.this,pointsSelect);
+                                                    mapView.addOverlay(myGeoPoint1);
+                                                    mapView.invalidate();
+
+                                                }
+                                            }).show();
+
+                                    View view = showCustomDialog.materialDialog.getCustomView();
+                                    TextView ent_name = view.findViewById(R.id.ent_name);
+                                    ent_name.setText(userList.get(position).getEntName());
+                                    TextView ent_code = view.findViewById(R.id.ent_code);
+                                    ent_code.setText(userList.get(position).getEntCode());
+                                    TextView ent_attribute = view.findViewById(R.id.ent_attribute);
+                                    ent_attribute.setText(userList.get(position).getEntAttribute());
+                                    TextView ent_address = view.findViewById(R.id.ent_address);
+                                    ent_address.setText(userList.get(position).getEntAddress());
+                                    TextView ent_owner = view.findViewById(R.id.ent_owner);
+                                    ent_owner.setText(userList.get(position).getEntOwner());
+                                    TextView ent_property = view.findViewById(R.id.ent_property);
+                                    ent_property.setText(userList.get(position).getEntProperty());
+                                    TextView ent_list = view.findViewById(R.id.ent_list);
+                                    ent_list.setText(userList.get(position).getCoorList());
+
+                                }
+                            })
                             .iconRes(R.drawable.ic_save)
                             .title("保存")
                             .positiveText("确认")
@@ -316,8 +386,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
                     .customView(R.layout.dialog_custom, true)
                     .iconRes(R.drawable.ic_save)
                     .title("保存")
-                    .positiveText("确认")
-                    .negativeText("取消").onPositive(new MaterialDialog.SingleButtonCallback() {
+                    .negativeText("取消")
+                    .positiveText("确认").onPositive(new MaterialDialog.SingleButtonCallback() {
                         @Override
                         public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
 
@@ -327,21 +397,38 @@ public class MainActivity extends Activity implements View.OnClickListener {
                             final String ent_address = ((EditText) dialog.getCustomView().findViewById(R.id.ent_address)).getText().toString();
                             final String ent_owner = ((EditText) dialog.getCustomView().findViewById(R.id.ent_owner)).getText().toString();
                             final String ent_property = ((EditText) dialog.getCustomView().findViewById(R.id.ent_property)).getText().toString();
-                            final String ent_image = ((EditText) dialog.getCustomView().findViewById(R.id.ent_image)).getText().toString();
+                            String ent_image = ((EditText) dialog.getCustomView().findViewById(R.id.ent_image)).getText().toString();
                             final String ent_list = ((EditText) dialog.getCustomView().findViewById(R.id.ent_list)).getText().toString();
                             final int ent_type = mOverlay.draw;
                             final int size = points.size();
                             String ent_addition = "";
                             for (GeoPoint point : points
                             ) {
-                                ent_addition = ent_addition + "(" + point.getLongitudeE6() + "," + point.getLatitudeE6() + "),";
+                                ent_addition = ent_addition  + point.getLongitudeE6() + "," + point.getLatitudeE6() + "/";
                             }
                             String urlStr = Constant.ADD;
+                            System.out.println("ent_imageent_imageent_imageent_imageent_imageent_image"+ent_image.isEmpty());
+                            String imageData = "";
+                            if(!ent_image.isEmpty()) {
+                                FileInputStream fis = null;
+                                {
+                                    try {
+                                        fis = new FileInputStream(ent_image);
+                                    } catch (FileNotFoundException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                Bitmap bitmap = BitmapFactory.decodeStream(fis);
+                                imageData = VolleyUtils.create(getContext()).bitmapToBase64(bitmap);
+                                System.out.println(imageData);
+                            }
 /*
                 String UrlBody = "entType=" + ent_type + "&entCode=" + ent_code + "&entName=" + ent_name + "&entAttribute=" + ent_attribute + "&entAddress=" + ent_address
                         + "&entOwner=" + ent_owner + "&entProperty=" + ent_property + "&entImage=" + ent_image + "&entAddition=" + ent_addition + "&coorNum=" + size + "&coorList=" + ent_list;
 */
                             final String finalEnt_addition = ent_addition;
+                            final String finalEnt_image = ent_image;
+                            final String finalImageData = imageData;
                             VolleyUtils.create(getContext())
                                     .post(urlStr, EntEntity.class, new VolleyUtils.OnResponse<EntEntity>() {
                                         @Override
@@ -353,10 +440,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                             map.put("entAddress", ent_address);
                                             map.put("entOwner", ent_owner);
                                             map.put("entProperty", ent_property);
-                                            map.put("entImage", ent_image);
+                                            map.put("entImage", finalEnt_image);
                                             map.put("entAddition", finalEnt_addition);
                                             map.put("coorNum", String.valueOf(size));
-                                            map.put("coorList=", ent_list);
+                                            map.put("coorList", ent_list);
+                                            map.put("imageData", finalImageData);
 
                                         }
 
@@ -370,8 +458,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                             Log.e("TAG", "error---->" + error);
                                         }
                                     });
-                            RequestQueue mQueue = Volley.newRequestQueue(getContext());
-
                         }
                     }).show();
             materialDialog.getCustomView().findViewById(R.id.btn_getImage).setOnClickListener(new View.OnClickListener() {
@@ -404,7 +490,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         //设置地图中心点
         mapController.setCenter(point);
         //设置地图等级
-        mapController.setZoom(12);
+        mapController.setZoom(13);
         ;
         //设置天地图log位置
         mapView.setLogoPos(MapView.LOGO_NONE);
@@ -448,6 +534,36 @@ public class MainActivity extends Activity implements View.OnClickListener {
                     }
                 })
                 .setHasDivider(true);
+        mListPopup.showDown(v);
+    }
+
+    //切换图层
+    void showSaveOverlay(View v) {
+        mListPopup = new XUISimplePopup(this,menuItems)
+                .create(DensityUtils.dp2px(getContext(), 170),new XUISimplePopup.OnPopupItemClickListener() {
+                    @Override
+                    public void onItemClick(XUISimpleAdapter adapter, AdapterItem item, int position) {
+                        switch (position) {
+                            case 0: {
+                            }
+                            break;
+                            //显示所有形状的覆盖物
+                            case 1: {
+                            }
+                            break;
+                            case 2: {
+                            }
+                            break;
+                            case 3: {
+                            }
+                            break;
+                            case 4: {
+                            }
+                            break;
+                        }
+                        XToast.normal(getContext(), item.getTitle().toString()).show();
+                    }
+                });
         mListPopup.showDown(v);
     }
 
@@ -526,7 +642,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
 
         public MyOverlay() {
-            mDrawable = ContextCompat.getDrawable(MainActivity.this, R.drawable.tuding);
+            mDrawable = ContextCompat.getDrawable(MainActivity.this, R.mipmap.tuding);
             mOption = new DrawableOption();
             lineOption = new LineOption();
             planeOption = new PlaneOption();
@@ -557,6 +673,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 case 0: {
                     for (GeoPoint point : points
                     ) {
+
                         render.drawDrawable(gl, mOption, mDrawable, point);
                     }
                 }

@@ -115,15 +115,3 @@ public class MyGeoPoint extends ItemizedOverlay {
         return on;
     }
 }
-/*
-    MaterialDialog materialDialog = new MaterialDialog.Builder(mContext)
-            .customView(R.layout.dialog_custom_point, true)
-            .iconRes(R.drawable.ic_save)
-            .title("保存单个点信息")
-            .positiveText("确认")
-            .negativeText("取消").onPositive(new MaterialDialog.SingleButtonCallback() {
-                @Override
-                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
-
-                }
-            }).show();*/

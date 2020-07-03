@@ -299,7 +299,7 @@ public class VolleyUtils {
             protected Map<String, String> getParams() {
                 // 在这里设置需要post的参数
                 HashMap<String, String> map = new HashMap<String, String>();
-                map.put("user_img", user_img); return map;
+                map.put("imageData", user_img); return map;
             }
         };
 	    mQueue.add(stringRequest);
@@ -312,8 +312,9 @@ public class VolleyUtils {
             if (bitmap != null) {
                 baos = new ByteArrayOutputStream();
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-                baos.flush(); baos.close(); byte[] bitmapBytes = baos.toByteArray();
-                result = Base64.encodeToString(bitmapBytes, Base64.DEFAULT);
+                baos.flush(); baos.close();
+                byte[] bitmapBytes = baos.toByteArray();
+                result = Base64.encodeToString(bitmapBytes, Base64.NO_WRAP);
             }
         } catch (IOException e) {
             e.printStackTrace();
