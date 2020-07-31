@@ -66,13 +66,13 @@
                 app:met_maxCharacters="12"/>
         <TextView
                 style="@style/TextStyle.Content"
-                android:text="类型：" />
+                android:text="性质：" />
         <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
                 android:id="@+id/ent_property"
                 android:layout_width="160dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
-                android:hint="请输入点的类型"
+                android:hint="请输入点的性质"
                 app:met_clearButton="true"
                 app:met_maxCharacters="12"/>
         <TextView

@@ -17,8 +17,7 @@ import java.util.List;
 public class MyGeoPoint extends ItemizedOverlay {
 
     private Context mContext;
-    private List<OverlayItem> geoList = new
-            ArrayList<OverlayItem>();
+    private List<OverlayItem> geoList = new ArrayList<>();
     private boolean on;
 
     public MyGeoPoint(Drawable marker, Context context, List<GeoPoint> points) {

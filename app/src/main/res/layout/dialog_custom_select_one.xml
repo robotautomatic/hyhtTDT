@@ -14,36 +14,54 @@
                 android:text="名称：" />
         <TextView
                 android:id="@+id/ent_name"
+                android:textSize="16dp"
+                android:textColor="#9B9B9B"
+                android:textStyle="bold"
                 style="@style/TextStyle.Content" />
         <TextView
                 style="@style/TextStyle.Content"
                 android:text="编码：" />
         <TextView
                 android:id="@+id/ent_code"
+                android:textSize="16dp"
+                android:textColor="#9B9B9B"
+                android:textStyle="bold"
                 style="@style/TextStyle.Content" />
         <TextView
                 style="@style/TextStyle.Content"
                 android:text="属性：" />
         <TextView
                 android:id="@+id/ent_attribute"
+                android:textSize="16dp"
+                android:textColor="#9B9B9B"
+                android:textStyle="bold"
                 style="@style/TextStyle.Content" />
         <TextView
                 style="@style/TextStyle.Content"
                 android:text="地址：" />
         <TextView
                 android:id="@+id/ent_address"
+                android:textSize="16dp"
+                android:textColor="#9B9B9B"
+                android:textStyle="bold"
                 style="@style/TextStyle.Content" />
         <TextView
                 style="@style/TextStyle.Content"
                 android:text="所有者：" />
         <TextView
                 android:id="@+id/ent_owner"
+                android:textSize="16dp"
+                android:textColor="#9B9B9B"
+                android:textStyle="bold"
                 style="@style/TextStyle.Content" />
         <TextView
                 style="@style/TextStyle.Content"
-                android:text="类型：" />
+                android:text="性质：" />
         <TextView
                 android:id="@+id/ent_property"
+                android:textSize="16dp"
+                android:textColor="#9B9B9B"
+                android:textStyle="bold"
                 style="@style/TextStyle.Content" />
         <TextView
                 style="@style/TextStyle.Content"
@@ -58,6 +76,9 @@
                 android:text="附加信息：" />
         <TextView
                 android:id="@+id/ent_list"
+                android:textSize="16dp"
+                android:textColor="#9B9B9B"
+                android:textStyle="bold"
                 style="@style/TextStyle.Content" />
 
     </LinearLayout>

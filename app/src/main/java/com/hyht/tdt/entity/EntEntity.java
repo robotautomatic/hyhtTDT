@@ -1,4 +1,4 @@
-package com.hyht.tdt;
+package com.hyht.tdt.entity;
 
 
 import java.io.Serializable;

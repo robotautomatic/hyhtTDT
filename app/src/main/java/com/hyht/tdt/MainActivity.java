@@ -2,43 +2,56 @@ package com.hyht.tdt;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.telephony.MbmsDownloadSession;
+import android.text.InputType;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.hyht.tdt.entity.EntEntity;
+import com.hyht.tdt.utils.FileProvider7;
+import com.hyht.tdt.utils.FileUtil;
+import com.hyht.tdt.utils.VolleyUtils;
 import com.tianditu.android.maps.*;
-import com.tianditu.android.maps.renderoption.*;
 import com.xuexiang.xui.adapter.simple.AdapterItem;
 import com.xuexiang.xui.adapter.simple.XUISimpleAdapter;
 import com.xuexiang.xui.utils.DensityUtils;
+import com.xuexiang.xui.widget.dialog.DialogLoader;
 import com.xuexiang.xui.widget.dialog.bottomsheet.BottomSheet;
 import com.xuexiang.xui.widget.dialog.bottomsheet.BottomSheetItemView;
 import com.xuexiang.xui.widget.dialog.materialdialog.DialogAction;
 import com.xuexiang.xui.widget.dialog.materialdialog.MaterialDialog;
+import com.xuexiang.xui.widget.dialog.strategy.InputCallback;
+import com.xuexiang.xui.widget.dialog.strategy.InputInfo;
 import com.xuexiang.xui.widget.popupwindow.popup.XUISimplePopup;
 import com.xuexiang.xui.widget.toast.XToast;
 
-import javax.microedition.khronos.opengles.GL10;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Type;
@@ -67,8 +80,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     private MapView mapView;
     private XUISimplePopup mListPopup;
-    private MyOverlay mOverlay;
+    private MyOverlayDrawGraph mOverlay;
     private MyGeoPoint myGeoPoint;
+    String mTempPhotoPath;
+    Uri imageUri;
 
     //在API23+以上，不仅要在AndroidManifest.xml里面添加权限 还要在JAVA代码中请求权限：
     // Storage Permissions
@@ -139,29 +154,33 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 mOverlay.setDrawConfirm(1);
                 XToast.normal(this, "绘画完成！").show();
 
-                Drawable marker =
-                        getResources().getDrawable(R.mipmap.tuding);
-                myGeoPoint = new MyGeoPoint(marker,MainActivity.this,points);
+                Drawable marker = getResources().getDrawable(R.mipmap.tuding);
+                points = mOverlay.getPoints();
+                myGeoPoint = new MyGeoPoint(marker, MainActivity.this, points);
                 System.out.println("pppoints = " + points);
                 mapView.addOverlay(myGeoPoint);
                 findViewById(R.id.btn_draw_rollback).setVisibility(View.GONE);
 
                 break;
             case R.id.btn_draw_rollback:
+                points = mOverlay.getPoints();
                 if (points.size() != 0) {
                     points.remove(points.size() - 1);
                 }
+                mOverlay.setPoints(points);
                 mapView.invalidate();
                 XToast.normal(this, "取消上次点击！").show();
                 break;
             case R.id.btn_draw_delete:
                 points.clear();
+                mOverlay.setPoints(points);
                 mapView.invalidate();
                 XToast.normal(this, "清除图像！").show();
                 mapView.removeOverlay(myGeoPoint);
                 break;
             case R.id.btn_draw_save:
                 XToast.normal(this, "保存至数据库！").show();
+                points =mOverlay.getPoints();
                 showCustomDialog = new ShowCustomDialog();
                 showCustomDialog.build();
                 break;
@@ -185,7 +204,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 myLocation.enableMyLocation(); //显示我的位置
                 GeoPoint myLocationPoint = myLocation.getMyLocation();
                 mapView.addOverlay(myLocation);
-                MapController mapController= new MapController(mapView);
+                MapController mapController = new MapController(mapView);
                 mapController.animateTo(myLocationPoint);
                 break;
         }
@@ -203,6 +222,23 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
 
     /**
+     * 拍照选择图片
+     */
+    private void takePhoto() {
+        Intent intentToTakePhoto = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        File fileDir = new File(Environment.getExternalStorageDirectory() + File.separator + "photoTest" + File.separator);
+        if (!fileDir.exists()) {
+            fileDir.mkdirs();
+        }
+
+        File photoFile = new File(fileDir, "photo.jpeg");
+        mTempPhotoPath = photoFile.getAbsolutePath();
+        imageUri = FileProvider7.getUriForFile(MainActivity.this, photoFile);
+        intentToTakePhoto.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+        startActivityForResult(intentToTakePhoto, 1);
+    }
+
+    /**
      * 回调，
      *
      * @param requestCode 根据requestCode的值来调用方法。
@@ -216,33 +252,47 @@ public class MainActivity extends Activity implements View.OnClickListener {
         System.out.println("requestCode = " + requestCode);
         System.out.println("resultCode = " + resultCode);
         System.out.println("data = " + data);
+        View view;
+        ImageView imageView;
+        EditText editText;
+        switch (requestCode) {
+            case 1:
+                if (resultCode != 0) {
+                    view = showCustomDialog.materialDialog.getCustomView();
+                    imageView = view.findViewById(R.id.image_choose);
+                    imageView.setImageURI(null);
+                    imageView.setImageURI(imageUri);
+                    imageView.setVisibility(View.VISIBLE);
+                    editText = view.findViewById(R.id.ent_image);
+                    editText.setText(mTempPhotoPath);
+                }
+                break;
 
-        if (data != null) {
-            switch (requestCode) {
-                case 2:
+            case 2:
 
+                if (data != null) {
                     XToast.normal(getContext(), "images");
 
                     System.out.println("22222222222222222222");
-                    Uri imageUri = data.getData();
+                    imageUri = data.getData();
 
                     System.out.println("uri = " + imageUri);
 
-                    assert imageUri != null;
                     String filePath = FileUtil.getFilePathByUri(this, imageUri);
-                    System.out.println("filePath = " + filePath);
-                    showCustomDialog.setImageUri(imageUri);
 
-                    View view = showCustomDialog.materialDialog.getCustomView();
-                    ImageView imageView = view.findViewById(R.id.image_choose);
+                    System.out.println("filePath = " + filePath);
+
+                    view = showCustomDialog.materialDialog.getCustomView();
+                    imageView = view.findViewById(R.id.image_choose);
                     imageView.setImageURI(imageUri);
                     imageView.setVisibility(View.VISIBLE);
-                    EditText editText = view.findViewById(R.id.ent_image);
+                    editText = view.findViewById(R.id.ent_image);
                     editText.setText(filePath);
+                }
+                break;
 
-                    /*                setImageURI(data.getData());*/
+            /*                setImageURI(data.getData());*/
 
-            }
         }
     }
 
@@ -273,32 +323,25 @@ public class MainActivity extends Activity implements View.OnClickListener {
      */
     private class ShowCustomDialog {
         MaterialDialog materialDialog;
-        private Uri imageUri;
-
-        public void setImageUri(Uri imageUri) {
-            this.imageUri = imageUri;
-        }
 
         void buildSelect() {
 
-            String urlStr = Constant.GET;
-            String s = new String();
+            final String urlStr = Constant.GET;
             //创建一个请求队列
             RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
             //创建一个请求
             StringRequest stringRequest = new StringRequest(urlStr, new Response.Listener<String>() {
                 //正确接受数据之后的回调
                 @Override
-                public void onResponse(String response) {
-                    System.out.println("responsesssssssssssss = "+response);
-                    Type type = new TypeToken<List<EntEntity>>() {
+                public void onResponse(final String response) {
+                    System.out.println("responsesssssssssssss = " + response);
+                    final Type type = new TypeToken<List<EntEntity>>() {
                     }.getType();
-                    Gson gson = new Gson();
+                    final Gson gson = new Gson();
                     final List<EntEntity> userList = gson.fromJson(response, type);
-                    userList.get(0).getEntName();
                     final List<String> list = new ArrayList<>();
                     for (EntEntity user : userList
-                         ) {
+                    ) {
                         list.add("名称：" + user.getEntName() + "  编码：" + user.getEntCode());
                     }
 
@@ -317,24 +360,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                             .negativeText("取消").onPositive(new MaterialDialog.SingleButtonCallback() {
                                                 @Override
                                                 public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
-                                                    String addition = userList.get(position).getEntAddition();
-                                                    System.out.println(addition);
-                                                    List<String> additionList = new ArrayList<>();
-                                                    String[] strArr = addition.split("/");
-                                                    for (String s : strArr
-                                                         ) {
-                                                        additionList.add(s);
-                                                    }
-                                                    List<GeoPoint> pointsSelect= new ArrayList<>();
-                                                    for (String s : additionList
-                                                         ) {
-                                                        String[] pointAddition = s.split(",");
-                                                        GeoPoint pointSelect = new GeoPoint(Integer.valueOf(pointAddition[1]).intValue(),Integer.valueOf(pointAddition[0]).intValue());
-                                                        pointsSelect.add(pointSelect);
-                                                    }
-                                                    System.out.println("ppp            = "+ pointsSelect);
-                                                    MyGeoPoint myGeoPoint1 = new MyGeoPoint(getResources().getDrawable(R.mipmap.tuding),MainActivity.this,pointsSelect);
-                                                    mapView.addOverlay(myGeoPoint1);
+                                                    EntEntity entEntity = userList.get(position);
+                                                    MyShowOverlayDetails myShowOverlayDetails = new MyShowOverlayDetails(getDrawable(R.mipmap.tuding), MainActivity.this, entEntity);
+                                                    List<EntEntity> entEntityList = new ArrayList<>();
+                                                    entEntityList.add(entEntity);
+                                                    MyOverlayShow myOverlayShow = new MyOverlayShow(entEntityList);
+                                                    mapView.addOverlay(myOverlayShow);
+                                                    mapView.addOverlay(myShowOverlayDetails);
                                                     mapView.invalidate();
 
                                                 }
@@ -356,11 +388,85 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                     TextView ent_list = view.findViewById(R.id.ent_list);
                                     ent_list.setText(userList.get(position).getCoorList());
 
+                                    final String s = "http://39.98.192.41:8080/" + userList.get(position).getEntImage();
+                                    ImageView ent_image_choose = view.findViewById(R.id.image_choose);
+                                    VolleyUtils.create(MainActivity.this).loadImg(s, ent_image_choose);
+                                    ent_image_choose.setVisibility(View.VISIBLE);
+
+                                    materialDialog.getCustomView().findViewById(R.id.image_choose).setOnClickListener(new View.OnClickListener() {
+                                        @Override
+                                        public void onClick(View v) {
+
+                                            LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
+                                            View imgEntryView = inflater.inflate(R.layout.dialog_photo_entry, null); // 加载自定义的布局文件
+                                            final AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).create();
+                                            ImageView img = (ImageView)imgEntryView.findViewById(R.id.large_image);
+                                            VolleyUtils.create(MainActivity.this).loadImg(s, img);
+                                            dialog.setView(imgEntryView); // 自定义dialog
+                                            dialog.show();
+                                            // 点击布局文件（也可以理解为点击大图）后关闭dialog，这里的dialog不需要按钮
+                                            imgEntryView.setOnClickListener(new View.OnClickListener(){
+                                                public void onClick(View paramView) {
+                                                    dialog.cancel();
+                                                }
+                                            });
+                                        }
+                                    });
+
                                 }
                             })
                             .iconRes(R.drawable.ic_save)
                             .title("保存")
                             .positiveText("确认")
+                            .neutralText("搜索")
+                            .onNeutral(new MaterialDialog.SingleButtonCallback() {
+                                @Override
+                                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                                    DialogLoader.getInstance().showInputDialog(MainActivity.this,
+                                            R.mipmap.tuding,
+                                            "搜索",
+                                            "根据输入的值对名称，属性，地址，所有者，类型进行模糊查询",
+                                            new InputInfo(InputType.TYPE_CLASS_TEXT, "请输入"),
+                                            new InputCallback() {
+                                                @Override
+                                                public void onInput(@NonNull DialogInterface dialog, CharSequence input) {
+                                                }
+                                            },
+                                            "确认",
+                                            new DialogInterface.OnClickListener() {
+                                                @Override
+                                                public void onClick(final DialogInterface dialog, int which) {
+                                                    dialog.dismiss();
+                                                    if (dialog instanceof MaterialDialog) {
+                                                        XToast.normal(getContext(), "你输入了:" + ((MaterialDialog) dialog).getInputEditText().getText().toString());
+                                                        EntService entService = new EntService(MainActivity.this);
+                                                        entService.setUrlStr(Constant.findAllLike + "?entCode=" + ((MaterialDialog) dialog).getInputEditText().getText().toString());
+                                                        entService.buildSelect(new EntService.VolleyCallback() {
+                                                            @Override
+                                                            public void onSuccess(String result) {
+                                                                List<EntEntity> searchEntityList = gson.fromJson(result, type);
+                                                                List<String> searchList = new ArrayList<>();
+                                                                for (EntEntity user : searchEntityList
+                                                                ) {
+                                                                    searchList.add("名称：" + user.getEntName() + "  编码：" + user.getEntCode());
+                                                                }
+                                                                materialDialog.setItems(searchList.toArray(new CharSequence[searchList.size()]));
+                                                            }
+                                                        });
+                                                        materialDialog.show();
+                                                    }
+                                                }
+                                            },
+                                            "取消",
+                                            new DialogInterface.OnClickListener() {
+                                                @Override
+                                                public void onClick(DialogInterface dialog, int which) {
+                                                    materialDialog.show();
+                                                }
+                                            }
+                                    );
+                                }
+                            })
                             .negativeText("取消").onPositive(new MaterialDialog.SingleButtonCallback() {
                                 @Override
                                 public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
@@ -372,7 +478,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 @Override
                 public void onErrorResponse(VolleyError error) {
                     System.out.println("errorerrorerror = " + error);
-                    XToast.normal(getContext(),"错误，无法获取信息"+error.getMessage()).show();
+                    XToast.normal(getContext(), "错误，无法获取信息" + error.getMessage()).show();
                 }
             });
             //将创建的请求添加到请求队列当中
@@ -404,12 +510,12 @@ public class MainActivity extends Activity implements View.OnClickListener {
                             String ent_addition = "";
                             for (GeoPoint point : points
                             ) {
-                                ent_addition = ent_addition  + point.getLongitudeE6() + "," + point.getLatitudeE6() + "/";
+                                ent_addition = ent_addition + point.getLongitudeE6() + "," + point.getLatitudeE6() + "/";
                             }
                             String urlStr = Constant.ADD;
-                            System.out.println("ent_imageent_imageent_imageent_imageent_imageent_image"+ent_image.isEmpty());
+                            System.out.println("ent_imageent_imageent_imageent_imageent_imageent_image" + ent_image.isEmpty());
                             String imageData = "";
-                            if(!ent_image.isEmpty()) {
+                            if (!ent_image.isEmpty()) {
                                 FileInputStream fis = null;
                                 {
                                     try {
@@ -463,8 +569,49 @@ public class MainActivity extends Activity implements View.OnClickListener {
             materialDialog.getCustomView().findViewById(R.id.btn_getImage).setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    choosePhoto();
+                    new BottomSheet.BottomListSheetBuilder(MainActivity.this)
+                            .setTitle("选择图片方式")
+                            .addItem("拍照选择")
+                            .addItem("相册选择")
+                            .setIsCenter(true)
+                            .setOnSheetItemClickListener(new BottomSheet.BottomListSheetBuilder.OnSheetItemClickListener() {
+                                @Override
+                                public void onClick(BottomSheet dialog, View itemView, int position, String tag) {
+                                    dialog.dismiss();
+                                    switch (position) {
+                                        case 0: {
+                                            takePhoto();
+                                        }
+                                        break;
+                                        case 1: {
+                                            choosePhoto();
+                                        }
+                                        break;
+                                    }
+                                }
+                            })
+                            .build()
+                            .show();
+                }
+            });
+            materialDialog.getCustomView().findViewById(R.id.image_choose).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
 
+                    LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
+                    View imgEntryView = inflater.inflate(R.layout.dialog_photo_entry, null); // 加载自定义的布局文件
+                    final AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).create();
+                    ImageView img = (ImageView)imgEntryView.findViewById(R.id.large_image);
+                    //imageDownloader.download("图片地址",img); // 这个是加载网络图片的，可以是自己的图片设置方法
+                    img.setImageURI(imageUri);
+                    dialog.setView(imgEntryView); // 自定义dialog
+                    dialog.show();
+                    // 点击布局文件（也可以理解为点击大图）后关闭dialog，这里的dialog不需要按钮
+                    imgEntryView.setOnClickListener(new View.OnClickListener(){
+                        public void onClick(View paramView) {
+                            dialog.cancel();
+                        }
+                    });
                 }
             });
         }
@@ -477,6 +624,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
             ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE,
                     REQUEST_EXTERNAL_STORAGE);
         }
+
+        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
     }
 
     public void init() {
@@ -537,27 +686,118 @@ public class MainActivity extends Activity implements View.OnClickListener {
         mListPopup.showDown(v);
     }
 
-    //切换图层
+    //切换显示覆盖物图层
     void showSaveOverlay(View v) {
-        mListPopup = new XUISimplePopup(this,menuItems)
-                .create(DensityUtils.dp2px(getContext(), 170),new XUISimplePopup.OnPopupItemClickListener() {
+        mListPopup = new XUISimplePopup(this, menuItems)
+                .create(DensityUtils.dp2px(getContext(), 210), new XUISimplePopup.OnPopupItemClickListener() {
                     @Override
                     public void onItemClick(XUISimpleAdapter adapter, AdapterItem item, int position) {
+                        EntService entService = new EntService(getContext());
                         switch (position) {
                             case 0: {
+                                mapView.removeAllOverlay();
+                                mapView.invalidate();
                             }
                             break;
                             //显示所有形状的覆盖物
                             case 1: {
+                                entService.buildSelect(new EntService.VolleyCallback() {
+                                    @Override
+                                    public void onSuccess(String result) {
+                                        Type type = new TypeToken<List<EntEntity>>() {
+                                        }.getType();
+                                        Gson gson = new Gson();
+                                        List<EntEntity> overlayList = gson.fromJson(result, type);
+                                        MyOverlayShow myOverlayShow = new MyOverlayShow(overlayList);
+                                        mapView.addOverlay(myOverlayShow);
+                                        for (EntEntity entEntity : overlayList
+                                        ) {
+                                            MyShowOverlayDetails myShowOverlayDetails = new MyShowOverlayDetails(getDrawable(R.mipmap.tuding), MainActivity.this, entEntity);
+                                            mapView.addOverlay(myShowOverlayDetails);
+                                        }
+                                    }
+                                });
                             }
                             break;
+                            //点
                             case 2: {
+                                entService.buildSelect(new EntService.VolleyCallback() {
+                                    @Override
+                                    public void onSuccess(String result) {
+                                        Type type = new TypeToken<List<EntEntity>>() {
+                                        }.getType();
+                                        Gson gson = new Gson();
+                                        List<EntEntity> overlayList = gson.fromJson(result, type);
+                                        List<EntEntity> overlayListPoint = new ArrayList<>();
+                                        for (EntEntity ent : overlayList
+                                        ) {
+                                            if (ent.getEntType() == 0) {
+                                                overlayListPoint.add(ent);
+                                            }
+                                        }
+                                        MyOverlayShow myOverlayShow = new MyOverlayShow(overlayListPoint);
+                                        mapView.addOverlay(myOverlayShow);
+                                        for (EntEntity entEntity : overlayListPoint
+                                        ) {
+                                            MyShowOverlayDetails myShowOverlayDetails = new MyShowOverlayDetails(getDrawable(R.mipmap.tuding), MainActivity.this, entEntity);
+                                            mapView.addOverlay(myShowOverlayDetails);
+                                        }
+                                    }
+                                });
                             }
                             break;
+                            //线
                             case 3: {
+                                entService.buildSelect(new EntService.VolleyCallback() {
+                                    @Override
+                                    public void onSuccess(String result) {
+                                        Type type = new TypeToken<List<EntEntity>>() {
+                                        }.getType();
+                                        Gson gson = new Gson();
+                                        List<EntEntity> overlayList = gson.fromJson(result, type);
+                                        List<EntEntity> overlayListPoint = new ArrayList<>();
+                                        for (EntEntity ent : overlayList
+                                        ) {
+                                            if (ent.getEntType() == 1) {
+                                                overlayListPoint.add(ent);
+                                            }
+                                        }
+                                        MyOverlayShow myOverlayShow = new MyOverlayShow(overlayListPoint);
+                                        mapView.addOverlay(myOverlayShow);
+                                        for (EntEntity entEntity : overlayListPoint
+                                        ) {
+                                            MyShowOverlayDetails myShowOverlayDetails = new MyShowOverlayDetails(getDrawable(R.mipmap.tuding), MainActivity.this, entEntity);
+                                            mapView.addOverlay(myShowOverlayDetails);
+                                        }
+                                    }
+                                });
                             }
                             break;
+                            //面
                             case 4: {
+                                entService.buildSelect(new EntService.VolleyCallback() {
+                                    @Override
+                                    public void onSuccess(String result) {
+                                        Type type = new TypeToken<List<EntEntity>>() {
+                                        }.getType();
+                                        Gson gson = new Gson();
+                                        List<EntEntity> overlayList = gson.fromJson(result, type);
+                                        List<EntEntity> overlayListPoint = new ArrayList<>();
+                                        for (EntEntity ent : overlayList
+                                        ) {
+                                            if (ent.getEntType() == 2) {
+                                                overlayListPoint.add(ent);
+                                            }
+                                        }
+                                        MyOverlayShow myOverlayShow = new MyOverlayShow(overlayListPoint);
+                                        mapView.addOverlay(myOverlayShow);
+                                        for (EntEntity entEntity : overlayListPoint
+                                        ) {
+                                            MyShowOverlayDetails myShowOverlayDetails = new MyShowOverlayDetails(getDrawable(R.mipmap.tuding), MainActivity.this, entEntity);
+                                            mapView.addOverlay(myShowOverlayDetails);
+                                        }
+                                    }
+                                });
                             }
                             break;
                         }
@@ -589,7 +829,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
                                 points.clear();
                                 mapView.removeOverlay(mOverlay);
-                                mOverlay = new MyOverlay();
+                                mOverlay = new MyOverlayDrawGraph(MainActivity.this);
                                 mOverlay.setDrawConfirm(0);
                                 mapView.addOverlay(mOverlay);
                                 drawBottonVisual(true);
@@ -599,7 +839,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
                                 points.clear();
                                 mapView.removeOverlay(mOverlay);
-                                mOverlay = new MyOverlay();
+                                mOverlay = new MyOverlayDrawGraph(MainActivity.this);
                                 mOverlay.setDrawConfirm(0);
                                 mOverlay.setDraw(1);
                                 mapView.addOverlay(mOverlay);
@@ -610,7 +850,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
                                 points.clear();
                                 mapView.removeOverlay(mOverlay);
-                                mOverlay = new MyOverlay();
+                                mOverlay = new MyOverlayDrawGraph(MainActivity.this);
                                 mOverlay.setDrawConfirm(0);
                                 mOverlay.setDraw(2);
                                 mapView.addOverlay(mOverlay);
@@ -625,118 +865,5 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     }
 
-    public class MyOverlay extends Overlay {
-        private Drawable mDrawable;
-        private DrawableOption mOption;
-        private LineOption lineOption;
-        private PlaneOption planeOption;
-        public int draw = 0;
-        public int drawConfirm = 0;
-
-        public void setDrawConfirm(int drawConfirm) {
-            this.drawConfirm = drawConfirm;
-        }
-
-        public void setDraw(int draw) {
-            this.draw = draw;
-        }
-
-        public MyOverlay() {
-            mDrawable = ContextCompat.getDrawable(MainActivity.this, R.mipmap.tuding);
-            mOption = new DrawableOption();
-            lineOption = new LineOption();
-            planeOption = new PlaneOption();
-
-            mOption.setAnchor(0.5f, 1.0f);
-
-            lineOption.setStrokeWidth(5);
-            lineOption.setDottedLine(false);
-            lineOption.setStrokeColor(0xAA000000);
-
-            planeOption.setStrokeWidth(5);
-            planeOption.setFillColor(0xAAFF0000);
-            planeOption.setStrokeColor(0xAA000000);
-
-        }/*
-        public void setGeoPoint(GeoPoint point) {
-            mGeoPoint = point;
-        }*/
-
-
-        @Override
-        public void draw(GL10 gl, MapView mapView, boolean shadow) {
-            if (shadow)
-                return;
-
-            MapViewRender render = mapView.getMapViewRender();
-            switch (draw) {
-                case 0: {
-                    for (GeoPoint point : points
-                    ) {
-
-                        render.drawDrawable(gl, mOption, mDrawable, point);
-                    }
-                }
-                break;
-                case 1: {
-                    for (GeoPoint point : points
-                    ) {
-                        render.drawDrawable(gl, mOption, mDrawable, point);
-                    }
-                    render.drawPolyLine(gl, lineOption, points);
-                }
-                break;
-                case 2: {
-                    for (GeoPoint point : points
-                    ) {
-                        render.drawDrawable(gl, mOption, mDrawable, point);
-                    }
-                    render.drawPolygon(gl, planeOption, points);
-                }
-                break;
-            }
-        }
-
-        @Override
-        public boolean isVisible() {
-            return super.isVisible();
-        }
-
-        @Override
-        public void setVisible(boolean b) {
-            super.setVisible(b);
-        }
-
-        @Override
-        public boolean onKeyDown(int keyCode, KeyEvent event, MapView mapView) {
-            return super.onKeyDown(keyCode, event, mapView);
-        }
-
-        @Override
-        public boolean onKeyUp(int keyCode, KeyEvent event, MapView mapView) {
-            return super.onKeyUp(keyCode, event, mapView);
-        }
-
-        @Override
-        public boolean onTap(GeoPoint p, MapView mapView) {
-            if (drawConfirm == 0) {
-                points.add(p);
-            }
-//            GeoPoint point = new GeoPoint(p.getLongitudeE6(),p.getLatitudeE6());
-            System.out.println("选取点的经度 = " + p.getLatitudeE6() + "  选取点的纬度 = " + p.getLongitudeE6());
-            System.out.println("draw = " + draw);
-            return true;
-        }
-
-        @Override
-        public boolean onLongPress(GeoPoint p, MapView mapView) {
-            return super.onLongPress(p, mapView);
-        }
-
-        @Override
-        public boolean onTouchEvent(MotionEvent event, MapView mapView) {
-            return super.onTouchEvent(event, mapView);
-        }
-    }
 
 }

@@ -1,4 +1,4 @@
-package com.hyht.tdt;
+package com.hyht.tdt.utils;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -11,6 +11,8 @@ import com.android.volley.*;
 import com.android.volley.toolbox.*;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.hyht.tdt.entity.EntEntity;
+import com.hyht.tdt.R;
 import org.json.JSONObject;
 
 import java.io.*;
