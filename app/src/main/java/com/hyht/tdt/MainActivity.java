@@ -3,6 +3,7 @@ package com.hyht.tdt;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -11,18 +12,22 @@ import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.telephony.MbmsDownloadSession;
 import android.text.InputType;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
+import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -38,9 +43,11 @@ import com.hyht.tdt.utils.FileProvider7;
 import com.hyht.tdt.utils.FileUtil;
 import com.hyht.tdt.utils.VolleyUtils;
 import com.tianditu.android.maps.*;
+import com.tianditu.android.maps.overlay.MarkerOverlay;
 import com.xuexiang.xui.adapter.simple.AdapterItem;
 import com.xuexiang.xui.adapter.simple.XUISimpleAdapter;
 import com.xuexiang.xui.utils.DensityUtils;
+import com.xuexiang.xui.widget.alpha.XUIAlphaButton;
 import com.xuexiang.xui.widget.dialog.DialogLoader;
 import com.xuexiang.xui.widget.dialog.bottomsheet.BottomSheet;
 import com.xuexiang.xui.widget.dialog.bottomsheet.BottomSheetItemView;
@@ -48,6 +55,7 @@ import com.xuexiang.xui.widget.dialog.materialdialog.DialogAction;
 import com.xuexiang.xui.widget.dialog.materialdialog.MaterialDialog;
 import com.xuexiang.xui.widget.dialog.strategy.InputCallback;
 import com.xuexiang.xui.widget.dialog.strategy.InputInfo;
+import com.xuexiang.xui.widget.layout.XUIButton;
 import com.xuexiang.xui.widget.popupwindow.popup.XUISimplePopup;
 import com.xuexiang.xui.widget.toast.XToast;
 
@@ -58,7 +66,10 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
+import static android.widget.LinearLayout.HORIZONTAL;
+import static android.widget.LinearLayout.VERTICAL;
 import static com.xuexiang.xui.XUI.getContext;
 
 public class MainActivity extends Activity implements View.OnClickListener {
@@ -95,7 +106,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
             Manifest.permission.CALL_PHONE,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.ACCESS_FINE_LOCATION
     };
     ShowCustomDialog showCustomDialog;
 
@@ -179,17 +191,29 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 mapView.removeOverlay(myGeoPoint);
                 break;
             case R.id.btn_draw_save:
-                XToast.normal(this, "保存至数据库！").show();
                 points =mOverlay.getPoints();
-                showCustomDialog = new ShowCustomDialog();
-                showCustomDialog.build();
+                if(points.size()==0){
+                    XToast.normal(this,"请正确绘制图形").show();
+                }else {
+                    showCustomDialog = new ShowCustomDialog();
+                    showCustomDialog.build();
+                }
+
                 break;
             case R.id.btn_draw_exit:
                 mapView.removeOverlay(mOverlay);
                 mapView.removeAllOverlay();
                 mapView.invalidate();
                 drawBottonVisual(false);
+                LinearLayout ll = findViewById(R.id.ll_btn);
+                while(ll.getChildCount() > 5){
+                    ll.removeViewAt(0);
+                }
                 XToast.normal(this, "退出绘制").show();
+                MyLocationOverlay myLocation2 = new MyLocationOverlay(MainActivity.this, mapView);
+                myLocation2.enableCompass(); //显示指南针
+                myLocation2.enableMyLocation(); //显示我的位置
+                mapView.addOverlay(myLocation2);
                 break;
             case R.id.btn_select:
                 showCustomDialog = new ShowCustomDialog();
@@ -328,7 +352,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
             final String urlStr = Constant.GET;
             //创建一个请求队列
-            RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
+            final RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
             //创建一个请求
             StringRequest stringRequest = new StringRequest(urlStr, new Response.Listener<String>() {
                 //正确接受数据之后的回调
@@ -356,8 +380,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                             .customView(R.layout.dialog_custom_select_one, true)
                                             .iconRes(R.drawable.ic_save)
                                             .title("详细信息")
-                                            .positiveText("显示在地图上")
-                                            .negativeText("取消").onPositive(new MaterialDialog.SingleButtonCallback() {
+                                            .positiveText("显示在地图上").onPositive(new MaterialDialog.SingleButtonCallback() {
                                                 @Override
                                                 public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
                                                     EntEntity entEntity = userList.get(position);
@@ -368,9 +391,198 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                                     mapView.addOverlay(myOverlayShow);
                                                     mapView.addOverlay(myShowOverlayDetails);
                                                     mapView.invalidate();
+                                                }
+                                            })
+                                            .negativeText("编辑").onNegative(new MaterialDialog.SingleButtonCallback() {
+                                                @Override
+                                                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                                                    materialDialog = new MaterialDialog.Builder(MainActivity.this)
+                                                            .customView(R.layout.dialog_custom,true)
+                                                            .title("编辑")
+                                                            .positiveText("确认").onPositive(new MaterialDialog.SingleButtonCallback() {
+                                                                @Override
+                                                                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+
+                                                                    EntEntity entEntity = userList.get(position);
+                                                                    final int ent_id = entEntity.getId();
+                                                                    final String ent_name = ((EditText) dialog.getCustomView().findViewById(R.id.ent_name)).getText().toString();
+                                                                    final String ent_code = ((EditText) dialog.getCustomView().findViewById(R.id.ent_code)).getText().toString();
+                                                                    final String ent_attribute = ((EditText) dialog.getCustomView().findViewById(R.id.ent_attribute)).getText().toString();
+                                                                    final String ent_address = ((EditText) dialog.getCustomView().findViewById(R.id.ent_address)).getText().toString();
+                                                                    final String ent_owner = ((EditText) dialog.getCustomView().findViewById(R.id.ent_owner)).getText().toString();
+                                                                    final String ent_property = ((EditText) dialog.getCustomView().findViewById(R.id.ent_property)).getText().toString();
+                                                                    String ent_image = ((EditText) dialog.getCustomView().findViewById(R.id.ent_image)).getText().toString();
+                                                                    final String ent_list = ((EditText) dialog.getCustomView().findViewById(R.id.ent_list)).getText().toString();
+
+                                                                    String urlStr = Constant.UPDATE;
+                                                                    String imageData = "";
+                                                                    if (!ent_image.isEmpty()) {
+                                                                        FileInputStream fis = null;
+                                                                        {
+                                                                            try {
+                                                                                fis = new FileInputStream(ent_image);
+                                                                            } catch (FileNotFoundException e) {
+                                                                                e.printStackTrace();
+                                                                            }
+                                                                        }
+                                                                        Bitmap bitmap = BitmapFactory.decodeStream(fis);
+                                                                        imageData = VolleyUtils.create(getContext()).bitmapToBase64(bitmap);
+                                                                    }
+
+                                                                    final String finalEnt_image = ent_image;
+                                                                    final String finalImageData = imageData;
+                                                                    VolleyUtils.create(getContext())
+                                                                            .post(urlStr, EntEntity.class, new VolleyUtils.OnResponse<EntEntity>() {
+                                                                                @Override
+                                                                                public void OnMap(Map<String, String> map) {
+                                                                                    map.put("id", String.valueOf(ent_id));
+                                                                                    map.put("entCode", ent_code);
+                                                                                    map.put("entName", ent_name);
+                                                                                    map.put("entAttribute", ent_attribute);
+                                                                                    map.put("entAddress", ent_address);
+                                                                                    map.put("entOwner", ent_owner);
+                                                                                    map.put("entProperty", ent_property);
+                                                                                    map.put("entImage", finalEnt_image);
+                                                                                    map.put("coorList", ent_list);
+                                                                                    map.put("imageData", finalImageData);
+
+                                                                                }
+
+                                                                                @Override
+                                                                                public void onSuccess(EntEntity response) {
+                                                                                    XToast.normal(MainActivity.this,"修改成功！").show();
+                                                                                }
+
+                                                                                @Override
+                                                                                public void onError(String error) {
+                                                                                    XToast.normal(MainActivity.this,"修改失败！").show();
+                                                                                }
+                                                                            });
+                                                                }
+                                                            })
+                                                            .show();
+                                                    materialDialog.getCustomView().findViewById(R.id.btn_getImage).setOnClickListener(new View.OnClickListener() {
+                                                        @Override
+                                                        public void onClick(View v) {
+                                                            new BottomSheet.BottomListSheetBuilder(MainActivity.this)
+                                                                    .setTitle("选择图片方式")
+                                                                    .addItem("拍照选择")
+                                                                    .addItem("相册选择")
+                                                                    .setIsCenter(true)
+                                                                    .setOnSheetItemClickListener(new BottomSheet.BottomListSheetBuilder.OnSheetItemClickListener() {
+                                                                        @Override
+                                                                        public void onClick(BottomSheet dialog, View itemView, int position, String tag) {
+                                                                            dialog.dismiss();
+                                                                            switch (position) {
+                                                                                case 0: {
+                                                                                    takePhoto();
+                                                                                }
+                                                                                break;
+                                                                                case 1: {
+                                                                                    choosePhoto();
+                                                                                }
+                                                                                break;
+                                                                            }
+                                                                        }
+                                                                    })
+                                                                    .build()
+                                                                    .show();
+                                                        }
+                                                    });
+                                                    materialDialog.getCustomView().findViewById(R.id.image_choose).setOnClickListener(new View.OnClickListener() {
+                                                        @Override
+                                                        public void onClick(View v) {
+
+                                                            LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
+                                                            View imgEntryView = inflater.inflate(R.layout.dialog_photo_entry, null); // 加载自定义的布局文件
+                                                            final AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).create();
+                                                            ImageView img = (ImageView)imgEntryView.findViewById(R.id.large_image);
+                                                            //imageDownloader.download("图片地址",img); // 这个是加载网络图片的，可以是自己的图片设置方法
+                                                            img.setImageURI(imageUri);
+                                                            dialog.setView(imgEntryView); // 自定义dialog
+                                                            dialog.show();
+                                                            // 点击布局文件（也可以理解为点击大图）后关闭dialog，这里的dialog不需要按钮
+                                                            imgEntryView.setOnClickListener(new View.OnClickListener(){
+                                                                public void onClick(View paramView) {
+                                                                    dialog.cancel();
+                                                                }
+                                                            });
+                                                        }
+                                                    });
+
+                                                    View view = showCustomDialog.materialDialog.getCustomView();
+                                                    EditText ent_name = view.findViewById(R.id.ent_name);
+                                                    ent_name.setText(userList.get(position).getEntName());
+                                                    EditText ent_code = view.findViewById(R.id.ent_code);
+                                                    ent_code.setText(userList.get(position).getEntCode());
+                                                    EditText ent_attribute = view.findViewById(R.id.ent_attribute);
+                                                    ent_attribute.setText(userList.get(position).getEntAttribute());
+                                                    EditText ent_address = view.findViewById(R.id.ent_address);
+                                                    ent_address.setText(userList.get(position).getEntAddress());
+                                                    EditText ent_owner = view.findViewById(R.id.ent_owner);
+                                                    ent_owner.setText(userList.get(position).getEntOwner());
+                                                    EditText ent_property = view.findViewById(R.id.ent_property);
+                                                    ent_property.setText(userList.get(position).getEntProperty());
+                                                    EditText ent_list = view.findViewById(R.id.ent_list);
+                                                    ent_list.setText(userList.get(position).getCoorList());
+
+                                                    final String s = "http://39.98.192.41:8080/" + userList.get(position).getEntImage();
+                                                    ImageView ent_image_choose = view.findViewById(R.id.image_choose);
+                                                    VolleyUtils.create(MainActivity.this).loadImg(s, ent_image_choose);
+                                                    ent_image_choose.setVisibility(View.VISIBLE);
+
+                                                    materialDialog.getCustomView().findViewById(R.id.image_choose).setOnClickListener(new View.OnClickListener() {
+                                                        @Override
+                                                        public void onClick(View v) {
+
+                                                            LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
+                                                            View imgEntryView = inflater.inflate(R.layout.dialog_photo_entry, null); // 加载自定义的布局文件
+                                                            final AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).create();
+                                                            ImageView img = (ImageView)imgEntryView.findViewById(R.id.large_image);
+                                                            VolleyUtils.create(MainActivity.this).loadImg(s, img);
+                                                            dialog.setView(imgEntryView); // 自定义dialog
+                                                            dialog.show();
+                                                            // 点击布局文件（也可以理解为点击大图）后关闭dialog，这里的dialog不需要按钮
+                                                            imgEntryView.setOnClickListener(new View.OnClickListener(){
+                                                                public void onClick(View paramView) {
+                                                                    dialog.cancel();
+                                                                }
+                                                            });
+                                                        }
+                                                    });
 
                                                 }
-                                            }).show();
+                                            })
+                                            .neutralText("删除").neutralColor(getColor(R.color.colorAccent)).onNeutral(new MaterialDialog.SingleButtonCallback() {
+                                                @Override
+                                                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                                                    MaterialDialog dia_delete = new MaterialDialog.Builder(MainActivity.this)
+                                                            .title("警告").titleColor(getColor(R.color.colorAccent))
+                                                            .content("此操作会将选中的覆盖物永久删除且无法恢复")
+                                                            .positiveText("删除").positiveColor(getColor(R.color.colorAccent)).onPositive(new MaterialDialog.SingleButtonCallback() {
+                                                                @Override
+                                                                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+
+                                                                    StringRequest request_Delete = new StringRequest(StringRequest.Method.DELETE, Constant.DELETE+"?id="+userList.get(position).getId(), new Response.Listener<String>() {
+                                                                        @Override
+                                                                        public void onResponse(String response) {
+                                                                            XToast.normal(MainActivity.this, "删除成功！").show();
+                                                                        }
+                                                                    }, new Response.ErrorListener() {
+                                                                        @Override
+                                                                        public void onErrorResponse(VolleyError error) {
+
+                                                                            XToast.normal(MainActivity.this,"删除失败！").show();
+                                                                        }
+                                                                    });
+                                                                    requestQueue.add(request_Delete);
+                                                                }
+                                                            })
+                                                            .negativeText("取消")
+                                                            .show();
+                                                }
+                                            })
+                                            .show();
 
                                     View view = showCustomDialog.materialDialog.getCustomView();
                                     TextView ent_name = view.findViewById(R.id.ent_name);
@@ -416,7 +628,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                 }
                             })
                             .iconRes(R.drawable.ic_save)
-                            .title("保存")
+                            .title("查询所有覆盖物")
                             .positiveText("确认")
                             .neutralText("搜索")
                             .onNeutral(new MaterialDialog.SingleButtonCallback() {
@@ -461,18 +673,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                             new DialogInterface.OnClickListener() {
                                                 @Override
                                                 public void onClick(DialogInterface dialog, int which) {
-                                                    materialDialog.show();
+                                                    dialog.dismiss();
                                                 }
                                             }
                                     );
                                 }
                             })
-                            .negativeText("取消").onPositive(new MaterialDialog.SingleButtonCallback() {
-                                @Override
-                                public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
-
-                                }
-                            }).show();
+                            .negativeText("取消").show();
                 }
             }, new Response.ErrorListener() {//发生异常之后的监听回调
                 @Override
@@ -557,6 +764,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                         @Override
                                         public void onSuccess(EntEntity response) {
                                             Log.e("TAG", "response---->" + response);
+                                            mapView.removeOverlay(mOverlay);
+                                            mapView.removeAllOverlay();
+                                            mapView.invalidate();
+                                            drawBottonVisual(false);
+                                            XToast.normal(MainActivity.this,"保存成功").show();
                                         }
 
                                         @Override
@@ -625,7 +837,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                     REQUEST_EXTERNAL_STORAGE);
         }
 
-        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE,Manifest.permission.ACCESS_FINE_LOCATION}, 1);
     }
 
     public void init() {
@@ -652,6 +864,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         //动画移动到当前位置
         mapController.animateTo(mPoint);*/
 
+        
     }
 
     //切换图层
@@ -695,6 +908,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                         EntService entService = new EntService(getContext());
                         switch (position) {
                             case 0: {
+                                mapView.removeCache();
                                 mapView.removeAllOverlay();
                                 mapView.invalidate();
                             }
@@ -814,16 +1028,21 @@ public class MainActivity extends Activity implements View.OnClickListener {
         final int TAG_SHARE_WECHAT_MOMENT = 1;
         final int TAG_SHARE_WEIBO = 2;
         final int TAG_SHARE_CHAT = 3;
-        BottomSheet.BottomGridSheetBuilder builder = new BottomSheet.BottomGridSheetBuilder(this);
+        final BottomSheet.BottomGridSheetBuilder builder = new BottomSheet.BottomGridSheetBuilder(this);
         builder
                 .addItem(R.drawable.huizhidian, "绘制点", TAG_SHARE_WECHAT_FRIEND, BottomSheet.BottomGridSheetBuilder.FIRST_LINE)
                 .addItem(R.drawable.zhexian, "绘制折线", TAG_SHARE_WECHAT_MOMENT, BottomSheet.BottomGridSheetBuilder.FIRST_LINE)
                 .addItem(R.drawable.huizhimian, "绘制多边形", TAG_SHARE_WEIBO, BottomSheet.BottomGridSheetBuilder.FIRST_LINE)
+                .addItem(R.drawable.huizhimian,"移动绘制",TAG_SHARE_CHAT,BottomSheet.BottomGridSheetBuilder.FIRST_LINE)
                 .setOnSheetItemClickListener(new BottomSheet.BottomGridSheetBuilder.OnSheetItemClickListener() {
                     @Override
                     public void onClick(BottomSheet dialog, BottomSheetItemView itemView) {
                         dialog.dismiss();
                         int tag = (int) itemView.getTag();
+                        LinearLayout ll = findViewById(R.id.ll_btn);
+                        while(ll.getChildCount() > 5){
+                            ll.removeViewAt(0);
+                        }
                         switch (tag) {
                             case 0: {
 
@@ -857,13 +1076,144 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                 drawBottonVisual(true);
                             }
                             break;
+                            case 3: {
+
+                                new BottomSheet.BottomListSheetBuilder(MainActivity.this)
+                                        .setTitle("选择")
+                                        .addItem("手动输入")
+                                        .addItem("时间间隔")
+                                        .setIsCenter(true)
+                                        .setOnSheetItemClickListener(new BottomSheet.BottomListSheetBuilder.OnSheetItemClickListener() {
+                                            @Override
+                                            public void onClick(BottomSheet dialog, View itemView, int position, String tag) {
+                                                dialog.dismiss();
+                                                switch (position) {
+                                                    case 0: {
+                                                        points.clear();
+                                                        mapView.removeOverlay(mOverlay);
+                                                        mOverlay = new MyOverlayDrawGraph(MainActivity.this);
+                                                        mOverlay.setDrawConfirm(1);
+                                                        mOverlay.setDraw(2);
+
+                                                        LinearLayout linearLayout = findViewById(R.id.ll_btn);
+                                                        Button btn_begin = DefaultButton(MainActivity.this);
+                                                        btn_begin.setText("开始");
+
+
+                                                        final MyLocationOverlay myLocation = new MyLocationOverlay(MainActivity.this, mapView);
+                                                        myLocation.enableCompass(); //显示指南针
+                                                        myLocation.enableMyLocation(); //显示我的位置
+                                                        mapView.addOverlay(myLocation);
+                                                        MapController mapController = new MapController(mapView);
+                                                        mapController.animateTo(myLocation.getMyLocation());
+
+                                                        mapView.addOverlay(mOverlay);
+                                                        drawBottonVisual(true);
+
+                                                        Button btn_add = DefaultButton(MainActivity.this);
+                                                        linearLayout.addView(btn_add,0);
+                                                        btn_add.setText("添加");
+                                                        btn_add.setOnClickListener(new View.OnClickListener() {
+                                                            @Override
+                                                            public void onClick(View v) {
+                                                                XToast.normal(MainActivity.this,"add").show();
+                                                                points.add(myLocation.getMyLocation());
+                                                                mOverlay.setPoints(points);
+                                                                mapView.invalidate();
+                                                                System.out.println(points);
+                                                            }
+                                                        });
+                                                    }
+                                                    break;
+                                                    case 1: {
+                                                        points.clear();
+                                                        mapView.removeOverlay(mOverlay);
+                                                        mOverlay = new MyOverlayDrawGraph(MainActivity.this);
+                                                        mOverlay.setDrawConfirm(1);
+                                                        mOverlay.setDraw(2);
+                                                        mapView.addOverlay(mOverlay);
+                                                        drawBottonVisual(false);
+                                                        final MyLocationOverlay myLocation = new MyLocationOverlay(MainActivity.this, mapView);
+                                                        myLocation.enableCompass(); //显示指南针
+                                                        myLocation.enableMyLocation(); //显示我的位置
+                                                        mapView.addOverlay(myLocation);
+                                                        MapController mapController = new MapController(mapView);
+                                                        mapController.animateTo(myLocation.getMyLocation());
+
+                                                        LinearLayout linearLayout = findViewById(R.id.ll_btn);
+                                                        final Button btn_begin = DefaultButton(MainActivity.this);
+                                                        btn_begin.setText("开始");
+                                                        final GeoPoint[] geoPoint = {null};
+                                                        final Handler handler = new Handler();
+                                                        final Runnable runnable = new Runnable() {
+                                                            @Override
+                                                            public void run() {
+                                                                System.out.println(geoPoint[0]);
+                                                                if(Math.sqrt(Math.pow(geoPoint[0].getLatitudeE6() - myLocation.getMyLocation().getLatitudeE6(),2)
+                                                                        + Math.pow(geoPoint[0].getLongitudeE6() - myLocation.getMyLocation().getLongitudeE6(),2)) > 100){
+                                                                    geoPoint[0] = myLocation.getMyLocation();
+                                                                    points.add(geoPoint[0]);
+                                                                    mOverlay.setPoints(points);
+                                                                    mapView.invalidate();
+                                                                    System.out.println(points);
+                                                                }
+                                                                mOverlay.setPoints(points);
+                                                                mapView.invalidate();
+                                                                System.out.println(points);System.out.println(points.size());
+                                                                handler.postDelayed(this,2000);
+                                                            }
+                                                        };
+
+                                                        btn_begin.setOnClickListener(new View.OnClickListener() {
+                                                            @Override
+                                                            public void onClick(View v) {
+                                                                String name = (String) btn_begin.getText();
+                                                                if (name == "开始"){
+                                                                    btn_begin.setText("停止");
+                                                                    if (geoPoint[0] == null){
+                                                                        geoPoint[0] = myLocation.getMyLocation();
+                                                                        points.add(geoPoint[0]);
+                                                                        mOverlay.setPoints(points);
+                                                                        mapView.invalidate();
+                                                                        System.out.println(points);
+                                                                    }
+                                                                    handler.postDelayed(runnable,2000);
+                                                                }else {
+                                                                    btn_begin.setText("开始");
+                                                                    handler.removeCallbacks(runnable);
+                                                                }
+
+                                                            }
+                                                        });
+                                                        linearLayout.addView(btn_begin,0);
+
+                                                    }
+                                                    break;
+                                                }
+                                            }
+                                        })
+                                        .build()
+                                        .show();
+
+
+                            }
+                            break;
 
                         }
                         XToast.normal(getContext(), "tag:" + tag + ", content:" + itemView.toString()).show();
                     }
                 }).build().show();
-
     }
-
+    Button DefaultButton(Context context){
+        Button btn_default = new XUIButton(context);
+        btn_default.setBackground(getDrawable(R.drawable.rb_bg_selector));
+        btn_default.setTextAppearance(R.style.Button_Radius);
+        btn_default.setLayoutParams(new LinearLayout.LayoutParams(btn_default.getLayoutParams().WRAP_CONTENT,btn_default.getLayoutParams().WRAP_CONTENT));
+        LinearLayout.LayoutParams  layoutParams = (LinearLayout.LayoutParams) btn_default.getLayoutParams();
+        layoutParams.setMargins(20,20,20,20);
+        btn_default.setLayoutParams(layoutParams);
+        btn_default.setPaddingRelative(12,0,12,0);
+        return btn_default;
+    }
 
 }

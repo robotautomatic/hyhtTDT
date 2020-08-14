@@ -5,7 +5,7 @@ android {
     buildToolsVersion "29.0.3"
     defaultConfig {
         applicationId "com.hyht.tdt"
-        minSdkVersion 25
+        minSdkVersion 26
         targetSdkVersion 26
         versionCode 1
         versionName "1.0"
@@ -17,7 +17,33 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    signingConfigs {
+        debug {
+            storeFile file('key.jks')//签名文件
+            storePassword "123456"  //密码
+            keyAlias "key0"       //别名
+            keyPassword "123456"    //密码
+        }
+        release  {
+            storeFile file('key.jks')//签名文件
+            storePassword "123456"  //密码
+            keyAlias "key0"       //别名
+            keyPassword "123456"    //密码
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
 }
+
+
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])

@@ -106,6 +106,7 @@ public class MyOverlayDrawGraph extends Overlay {
             return;
 
         MapViewRender render = mapView.getMapViewRender();
+
         switch (draw) {
             case 0: {
                 for (GeoPoint point : points
@@ -124,8 +125,10 @@ public class MyOverlayDrawGraph extends Overlay {
             }
             break;
             case 2: {
-                for (GeoPoint point : points
+                for (int i = 0;i < points.size(); i++
                 ) {
+
+                    GeoPoint point = points.get(i);
                     render.drawDrawable(gl, mOption, mDrawable, point);
                 }
                 render.drawPolygon(gl, planeOption, points);

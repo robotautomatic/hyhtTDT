@@ -38,8 +38,9 @@ public class Test {
 
     @org.junit.Test
     public void test1() {
-        System.out.println(generateTrees(1, 3));
-
+        //System.out.println(generateTrees(1, 3));
+        Integer a = 1;
+        System.out.println(a != null ? false : false);
     }
 
     public List<TreeNode> generateTrees(int start, int end) {

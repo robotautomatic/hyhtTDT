@@ -3,16 +3,26 @@ package com.hyht.tdt;
 import android.content.Context;
 import android.graphics.Point;
 import android.graphics.drawable.Drawable;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import com.tianditu.android.maps.*;
 import com.tianditu.maps.Overlay.ItemsOverlayList;
 import com.xuexiang.xui.XUI;
+import com.xuexiang.xui.utils.DensityUtils;
+import com.xuexiang.xui.utils.SnackbarUtils;
+import com.xuexiang.xui.widget.dialog.bottomsheet.BottomSheet;
 import com.xuexiang.xui.widget.dialog.materialdialog.DialogAction;
 import com.xuexiang.xui.widget.dialog.materialdialog.MaterialDialog;
+import com.xuexiang.xui.widget.popupwindow.popup.XUIPopup;
+import com.xuexiang.xui.widget.toast.XToast;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
 
 public class MyGeoPoint extends ItemizedOverlay {
 
@@ -82,8 +92,8 @@ public class MyGeoPoint extends ItemizedOverlay {
         System.out.println("on = " + on);
         System.out.println("i = " + i);
         if (i != -1) {
-            Toast.makeText(mContext,
-                    geoList.get(i).getSnippet(), Toast.LENGTH_SHORT).show();
+/*            Toast.makeText(mContext,
+                    geoList.get(i).getSnippet(), Toast.LENGTH_SHORT).show();*/
 
             System.out.println(" /   getFocusID = " + super.getFocusID());
             System.out.println(" //   getLastFocusedIndex = " + super.getLastFocusedIndex());
@@ -99,7 +109,7 @@ public class MyGeoPoint extends ItemizedOverlay {
         on = super.onTap(geoPoint, mapView);
 
         if(on == true){
-            MaterialDialog materialDialog = new MaterialDialog.Builder(mContext)
+/*            MaterialDialog materialDialog = new MaterialDialog.Builder(mContext)
                     .customView(R.layout.dialog_custom_point, true)
                     .iconRes(R.drawable.ic_save)
                     .title("保存单个点信息")
@@ -109,7 +119,19 @@ public class MyGeoPoint extends ItemizedOverlay {
                         public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
 
                         }
-                    }).show();
+                    }).show();*/
+/*            BottomSheet.BottomListSheetBuilder builder = new BottomSheet.BottomListSheetBuilder(mContext);
+            builder.addItem("删除这个点")
+                    .setIsCenter(true)
+                    .setOnSheetItemClickListener(new BottomSheet.BottomListSheetBuilder.OnSheetItemClickListener() {
+                        @Override
+                        public void onClick(BottomSheet dialog, View itemView, int position, String tag) {
+                            dialog.dismiss();
+                            XToast.normal(mContext,"删除成功").show();
+                        }
+                    })
+                    .build().show();*/
+
         }
         return on;
     }

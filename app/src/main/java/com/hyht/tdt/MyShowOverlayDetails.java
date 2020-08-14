@@ -26,15 +26,16 @@ public class MyShowOverlayDetails extends ItemizedOverlay {
     private Context mContext;
     private List<OverlayItem> geoList = new ArrayList<>();
     private EntEntity entEntity;
+    private OverlayItem item;
+    List<GeoPoint> points;
 
     public MyShowOverlayDetails(Drawable marker, Context context, EntEntity entEntity) {
         super(boundCenterBottom(marker));
         this.entEntity = entEntity;
-        EntityToGeoPointUtil entityToGeoPointUtil= new EntityToGeoPointUtil();
         this.mContext = context;
-        List<GeoPoint> points = entityToGeoPointUtil.getGeoPointList(entEntity);
+        points = new EntityToGeoPointUtil().getGeoPointList(entEntity);
         for (int i = 0; i < points.size(); i++) {
-            OverlayItem item = new OverlayItem(points.get(i), "P" + i, "point" + i);
+            item = new OverlayItem(points.get(i), "P" + i, "point" + i);
             item.setMarker(marker);
             geoList.add(item);
         }
@@ -54,9 +55,10 @@ public class MyShowOverlayDetails extends ItemizedOverlay {
     @Override
     public boolean onTap(GeoPoint geoPoint, MapView mapView) {
         boolean on = super.onTap(geoPoint, mapView);
-
+        System.out.println("tap");
         if(on == true){
-            MaterialDialog materialDialog = new MaterialDialog.Builder(mContext)
+            System.out.println("on");
+            final MaterialDialog materialDialog = new MaterialDialog.Builder(mContext)
                     .customView(R.layout.dialog_custom_select_one, true)
                     .iconRes(R.drawable.ic_save)
                     .title("显示详细信息")
@@ -84,7 +86,7 @@ public class MyShowOverlayDetails extends ItemizedOverlay {
             TextView ent_list = view.findViewById(R.id.ent_list);
             ent_list.setText(entEntity.getCoorList());
 
-            final String s = "http://39.98.192.41:8080/" + entEntity.getEntImage();
+/*            final String s = "http://39.98.192.41:8080/" + entEntity.getEntImage();
             ImageView ent_image_choose = view.findViewById(R.id.image_choose);
             VolleyUtils.create(mContext).loadImg(s,ent_image_choose);
             ent_image_choose.setVisibility(View.VISIBLE);
@@ -106,7 +108,7 @@ public class MyShowOverlayDetails extends ItemizedOverlay {
                             dialog.cancel();
                         }
                     });
-/*                    final MaterialDialog imageDialog = new MaterialDialog.Builder(mContext)
+*//*                    final MaterialDialog imageDialog = new MaterialDialog.Builder(mContext)
                             .customView(R.layout.dialog_photo_entry, false)
                             .show();
                     ImageView img = imageDialog.findViewById(R.id.large_image);
@@ -115,11 +117,12 @@ public class MyShowOverlayDetails extends ItemizedOverlay {
                         public void onClick(View paramView) {
                             imageDialog.cancel();
                         }
-                    });*/
+                    });*//*
                 }
-            });
+            });*/
 
         }
         return on;
     }
+
 }
