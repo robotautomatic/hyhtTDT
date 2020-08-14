@@ -166,11 +166,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 mOverlay.setDrawConfirm(1);
                 XToast.normal(this, "绘画完成！").show();
 
-                Drawable marker = getResources().getDrawable(R.mipmap.tuding);
+               /* Drawable marker = getResources().getDrawable(R.mipmap.tuding);
                 points = mOverlay.getPoints();
                 myGeoPoint = new MyGeoPoint(marker, MainActivity.this, points);
                 System.out.println("pppoints = " + points);
-                mapView.addOverlay(myGeoPoint);
+                mapView.addOverlay(myGeoPoint);*/
                 findViewById(R.id.btn_draw_rollback).setVisibility(View.GONE);
 
                 break;
@@ -996,20 +996,16 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                         }.getType();
                                         Gson gson = new Gson();
                                         List<EntEntity> overlayList = gson.fromJson(result, type);
-                                        List<EntEntity> overlayListPoint = new ArrayList<>();
+                                        List<EntEntity> overlayListPolygon = new ArrayList<>();
                                         for (EntEntity ent : overlayList
                                         ) {
                                             if (ent.getEntType() == 2) {
-                                                overlayListPoint.add(ent);
+                                                overlayListPolygon.add(ent);
                                             }
                                         }
-                                        MyOverlayShow myOverlayShow = new MyOverlayShow(overlayListPoint);
-                                        mapView.addOverlay(myOverlayShow);
-                                        for (EntEntity entEntity : overlayListPoint
-                                        ) {
-                                            MyShowOverlayDetails myShowOverlayDetails = new MyShowOverlayDetails(getDrawable(R.mipmap.tuding), MainActivity.this, entEntity);
-                                            mapView.addOverlay(myShowOverlayDetails);
-                                        }
+                                        System.out.println("aa"+ overlayListPolygon);
+                                        OverlayShow overlayShowPolygon = new OverlayShow(overlayListPolygon, MainActivity.this);
+                                        mapView.addOverlay(overlayShowPolygon);
                                     }
                                 });
                             }

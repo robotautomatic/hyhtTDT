@@ -20,10 +20,7 @@ public class MyOverlayShow extends Overlay {
 
     @Override
     public void draw(GL10 gl, MapView mapView, boolean shadow) {
-        if (shadow)
-            return;
         EntityToGeoPointUtil entityToGeoPointUtil = new EntityToGeoPointUtil();
-
         for (EntEntity entEntity : overlayList
              ) {
             List<GeoPoint> points = entityToGeoPointUtil.getGeoPointList(entEntity);

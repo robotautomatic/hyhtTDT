@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class EntityToGeoPointUtil {
+
     public List<GeoPoint> getGeoPointList(EntEntity entEntity){
         String addition = entEntity.getEntAddition();
         List<String> additionList = new ArrayList<>();

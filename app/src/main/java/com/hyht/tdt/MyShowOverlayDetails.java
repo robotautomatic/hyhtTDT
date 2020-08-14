@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import com.hyht.tdt.R;
 import com.hyht.tdt.entity.EntEntity;
 import com.hyht.tdt.utils.EntityToGeoPointUtil;
+import com.hyht.tdt.utils.SpatialRelationUtil;
 import com.hyht.tdt.utils.VolleyUtils;
 import com.tianditu.android.maps.GeoPoint;
 import com.tianditu.android.maps.ItemizedOverlay;
@@ -28,6 +29,7 @@ public class MyShowOverlayDetails extends ItemizedOverlay {
     private EntEntity entEntity;
     private OverlayItem item;
     List<GeoPoint> points;
+    private int a;
 
     public MyShowOverlayDetails(Drawable marker, Context context, EntEntity entEntity) {
         super(boundCenterBottom(marker));
@@ -54,9 +56,12 @@ public class MyShowOverlayDetails extends ItemizedOverlay {
 
     @Override
     public boolean onTap(GeoPoint geoPoint, MapView mapView) {
+        a++;
         boolean on = super.onTap(geoPoint, mapView);
-        System.out.println("tap");
-        if(on == true){
+        System.out.println("tap : " + a);
+        boolean b = SpatialRelationUtil.isPolygonContainsPoint1(points, geoPoint);
+        if(b == true){
+            System.out.println("选中的是:"+entEntity.getEntName());
             System.out.println("on");
             final MaterialDialog materialDialog = new MaterialDialog.Builder(mContext)
                     .customView(R.layout.dialog_custom_select_one, true)

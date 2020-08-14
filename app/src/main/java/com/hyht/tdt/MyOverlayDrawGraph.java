@@ -5,6 +5,7 @@ import android.graphics.drawable.Drawable;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import androidx.core.content.ContextCompat;
+import com.hyht.tdt.utils.SpatialRelationUtil;
 import com.tianditu.android.maps.GeoPoint;
 import com.tianditu.android.maps.MapView;
 import com.tianditu.android.maps.MapViewRender;
@@ -13,6 +14,7 @@ import com.tianditu.android.maps.overlay.PolygonOverlay;
 import com.tianditu.android.maps.renderoption.DrawableOption;
 import com.tianditu.android.maps.renderoption.LineOption;
 import com.tianditu.android.maps.renderoption.PlaneOption;
+import com.xuexiang.xui.widget.toast.XToast;
 
 import javax.microedition.khronos.opengles.GL10;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ public class MyOverlayDrawGraph extends Overlay {
     private PlaneOption planeOption;
     public int draw = 0;
     public int drawConfirm = 0;
+    Context mContext;
     ArrayList<GeoPoint> points = new ArrayList<GeoPoint>();
 
     public int getDraw() {
@@ -83,6 +86,7 @@ public class MyOverlayDrawGraph extends Overlay {
     }
 
     MyOverlayDrawGraph(Context context) {
+        mContext = context;
         mDrawable = ContextCompat.getDrawable(context, R.mipmap.tuding);
         mOption = new DrawableOption();
         lineOption = new LineOption();
@@ -117,20 +121,10 @@ public class MyOverlayDrawGraph extends Overlay {
             }
             break;
             case 1: {
-                for (GeoPoint point : points
-                ) {
-                    render.drawDrawable(gl, mOption, mDrawable, point);
-                }
                 render.drawPolyLine(gl, lineOption, points);
             }
             break;
             case 2: {
-                for (int i = 0;i < points.size(); i++
-                ) {
-
-                    GeoPoint point = points.get(i);
-                    render.drawDrawable(gl, mOption, mDrawable, point);
-                }
                 render.drawPolygon(gl, planeOption, points);
             }
             break;
@@ -165,6 +159,8 @@ public class MyOverlayDrawGraph extends Overlay {
 //            GeoPoint point = new GeoPoint(p.getLongitudeE6(),p.getLatitudeE6());
         System.out.println("选取点的经度 = " + p.getLatitudeE6() + "  选取点的纬度 = " + p.getLongitudeE6());
         System.out.println("draw = " + draw);
+        boolean b =SpatialRelationUtil.isPolygonContainsPoint1(points, p);
+        XToast.normal(mContext,"是否选中：" + b).show();
         return true;
     }
 
